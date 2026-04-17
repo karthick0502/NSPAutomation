@@ -62,3 +62,24 @@ uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Response: JSON matching the `EnquiryExtraction` schema (see `src/nsp_automation/models.py`).
+
+## n8n Workflow (Added)
+
+I have added an n8n workflow to this repository for end-to-end automation:
+
+- Workflow file: `n8n/NSPCasesAutomation.json`
+- Core nodes: Gmail Trigger -> Normalize (Code) -> HTTP Request (`POST /extract`)
+
+### How to use
+
+1. Import `n8n/NSPCasesAutomation.json` into n8n.
+2. Run the backend locally:
+   - `uvicorn server:app --reload --host 0.0.0.0 --port 8000`
+3. If using n8n Cloud, point the HTTP node to your public tunnel URL:
+   - `https://<your-tunnel-domain>/extract`
+4. If using local n8n on the same machine:
+   - `http://127.0.0.1:8000/extract`
+
+The workflow reads incoming enquiry emails, normalizes text and attachments,
+sends them to the extraction API, and receives structured JSON output ready for
+downstream systems.

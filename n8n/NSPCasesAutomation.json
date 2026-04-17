@@ -1,0 +1,710 @@
+{
+  "name": "NSPCasesAutomation",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const fromObj = item.json.from || {};\n  const firstFrom = Array.isArray(fromObj.value) && fromObj.value.length > 0\n    ? fromObj.value[0]\n    : {};\n\n  results.push({\n    json: {\n      id: item.json.id || '',\n      threadId: item.json.threadId || '',\n      labelIds: item.json.labelIds || [],\n      subject: item.json.subject || '',\n      date: item.json.date || '',\n      fromName: firstFrom.name || '',\n      fromEmail: firstFrom.address || '',\n      text: item.json.text || ''\n    },\n    binary: item.binary\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -80
+      ],
+      "id": "62b9d67c-45f4-48fe-9c60-8206ac060bbf",
+      "name": "Normalize"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const rawBody = item.json.text || '';\n\n  const cleanedBody = rawBody\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<[^>]*>/g, ' ')\n    .replace(/\\r/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n\n  results.push({\n    json: {\n      ...item.json,\n      rawBody,\n      cleanedBody\n    },\n    binary: item.binary\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -80
+      ],
+      "id": "8765fef6-ccfd-417d-96aa-be51ba3f4fe7",
+      "name": "Clean Email"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const binary = item.binary || {};\n  const attachmentKeys = Object.keys(binary);\n\n  const attachmentNames = attachmentKeys\n    .map(key => binary[key]?.fileName || '')\n    .filter(Boolean);\n\n  results.push({\n    json: {\n      ...item.json,\n      attachments_present: attachmentNames.length > 0,\n      attachment_names_array: attachmentNames,\n      attachment_names: attachmentNames.join('; ')\n    },\n    binary: item.binary\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -80
+      ],
+      "id": "216b73c0-d34c-40ca-aafd-0a8f01d27426",
+      "name": "Detect Attachments"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "649891ab-1b76-4213-acf7-dd0cfa9cdb33",
+              "leftValue": "={{ $json.attachments_present }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        480,
+        -256
+      ],
+      "id": "d1154c8e-1efa-41df-b355-861f0c7b0cec",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1yloBBvjyqcLNqZ0DZZpbLU5TrPnKX44q",
+          "mode": "list",
+          "cachedResultName": "NSP_CASES_AUTOMATION",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1yloBBvjyqcLNqZ0DZZpbLU5TrPnKX44q"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        688,
+        -576
+      ],
+      "id": "ce0b31bd-0447-4dcd-a2b6-363f95977a48",
+      "name": "Create folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Ty4iUKemPt9AQvrC",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1248,
+        -592
+      ],
+      "id": "ad28bed7-381c-48be-8f8d-f26c371a1476",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  results.push({\n    json: {\n      driveFolderId: item.json.id || '',\n      driveFolderName: item.json.name || '',\n      driveFolderMimeType: item.json.mimeType || ''\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -592
+      ],
+      "id": "47731aae-bb15-4eaf-8957-980292930277",
+      "name": "prepare folder metadata"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "={{ $json.current_attachment_key }}",
+        "name": "={{ $json.current_attachment_key }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.driveFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2064,
+        -608
+      ],
+      "id": "97a4021f-e0c4-4158-8c3a-9790d87d0770",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Ty4iUKemPt9AQvrC",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const binary = item.binary || {};\n  const entries = Object.entries(binary);\n\n  for (const [key, file] of entries) {\n    results.push({\n      json: {\n        ...item.json,\n        current_attachment_key: key,\n        current_attachment_name: file.fileName || '',\n        current_attachment_mimeType: file.mimeType || ''\n      },\n      binary: {\n        [key]: file\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        -672
+      ],
+      "id": "7fcfb56d-f61b-46c1-a8d0-17899c76b2fe",
+      "name": "Split Attachments"
+    },
+    {
+      "parameters": {
+        "jsCode": "const grouped = {};\n\nfor (const item of $input.all()) {\n  const messageId = item.json.messageId || 'default';\n\n  if (!grouped[messageId]) {\n    grouped[messageId] = {\n      messageId,\n      uploaded_attachment_names: [],\n      attachment_download_links: [],\n      attachment_view_links: [],\n      attachment_folder_link: item.json.driveFolderId\n        ? `https://drive.google.com/drive/folders/${item.json.driveFolderId}`\n        : ''\n    };\n  }\n\n  const fileName =\n    item.json.originalFilename ||\n    item.json.name ||\n    item.json.current_attachment_name ||\n    '';\n\n  if (fileName) {\n    grouped[messageId].uploaded_attachment_names.push(fileName);\n  }\n\n  if (item.json.webContentLink) {\n    grouped[messageId].attachment_download_links.push(item.json.webContentLink);\n  }\n\n  if (item.json.webViewLink) {\n    grouped[messageId].attachment_view_links.push(item.json.webViewLink);\n  }\n}\n\nreturn Object.values(grouped).map(entry => ({\n  json: {\n    messageId: entry.messageId,\n    uploaded_attachment_names: entry.uploaded_attachment_names.join('; '),\n    attachment_download_links: entry.attachment_download_links.join('; '),\n    attachment_view_links: entry.attachment_view_links.join('; '),\n    attachment_folder_link: entry.attachment_folder_link\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -576
+      ],
+      "id": "ff574dad-5774-47ae-ba6b-0e64c10d183a",
+      "name": "Collect Uploaded file Links"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  results.push({\n    json: {\n      messageId: item.json.id || '',\n      threadId: item.json.threadId || '',\n      subject: item.json.subject || '',\n      date: item.json.date || '',\n      fromName: item.json.fromName || '',\n      fromEmail: item.json.fromEmail || '',\n      text: item.json.text || '',\n      rawBody: item.json.rawBody || '',\n      cleanedBody: item.json.cleanedBody || '',\n      attachments_present: item.json.attachments_present ?? false,\n      attachment_names_array: item.json.attachment_names_array || [],\n      attachment_names: item.json.attachment_names || '',\n      driveFolderId: item.json.driveFolderId || '',\n      driveFolderName: item.json.driveFolderName || ''\n    },\n    binary: item.binary\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        -608
+      ],
+      "id": "3615796f-9abb-4955-be26-a8f2d2f6cfc2",
+      "name": "Preserve folder + email data"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1984,
+        -368
+      ],
+      "id": "e940e0c0-1c0b-48cf-a60a-0fd0b74dc6db",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract structured information from this customer enquiry email.\n\nSubject: {{$json.subject}}\nFrom Name: {{$json.fromName}}\nFrom Email: {{$json.fromEmail}}\nReceived At: {{$json.date}}\n\nEmail Body:\n{{$json.cleanedBody}}\n\nAttachments:\n{{$json.attachmentsTextForAI}}",
+        "options": {
+          "systemMessage": "You are an AI assistant that extracts structured information from customer enquiry emails for custom flight cases.\n\nReturn only valid JSON.\n\nRules:\n1. Extract only explicitly stated information.\n2. Do not guess missing values.\n3. If a field is missing, use null for numbers and empty string or empty array where appropriate.\n4. Summarize the enquiry clearly for an internal sales team.\n5. Include missing details needed for quoting or production planning.\n6. confidence_score must be a number between 0 and 1.\n7. If attachments are present, mention in the summary that the customer included reference files or drawings.\n8. If attachment names or links are provided in the prompt, copy them into the output exactly as provided.\n9. Do not infer or invent attachment contents.\n10. Return JSON only. No markdown. No explanation.\n\nUse this exact JSON structure:\n{\n  \"customer_name\": \"\",\n  \"customer_email\": \"\",\n  \"company_name\": \"\",\n  \"job_title\": \"\",\n  \"subject\": \"\",\n  \"product_type\": \"\",\n  \"item_name\": \"\",\n  \"quantity\": null,\n  \"dimensions\": {\n    \"length\": null,\n    \"width\": null,\n    \"height\": null,\n    \"unit\": \"mm\"\n  },\n  \"use_case\": \"\",\n  \"requirements\": [],\n  \"timeline\": \"\",\n  \"attachments_present\": false,\n  \"attachment_names\": [],\n  \"attachment_download_links\": [],\n  \"attachment_view_links\": [],\n  \"attachment_folder_link\": \"\",\n  \"summary\": \"\",\n  \"missing_information\": [],\n  \"confidence_score\": null\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1248,
+        -64
+      ],
+      "id": "96104f65-ce62-4c05-b3c8-bbc0230dcfc2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1088,
+        192
+      ],
+      "id": "0990ce7e-9c34-43a3-8b11-31917e44945b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "7gqhK5bVd9KKmBR8",
+          "name": "nspcases-testmodel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const attachmentNames =\n    item.json.uploaded_attachment_names ||\n    item.json.attachment_names ||\n    '';\n\n  const attachmentDownloadLinks =\n    item.json.attachment_download_links || '';\n\n  const attachmentViewLinks =\n    item.json.attachment_view_links || '';\n\n  const attachmentFolderLink =\n    item.json.attachment_folder_link || '';\n\n  const attachmentsTextForAI = item.json.attachments_present\n    ? `Yes.\nAttachment names: ${attachmentNames || 'attached files'}.\nAttachment download links: ${attachmentDownloadLinks || 'N/A'}.\nAttachment view links: ${attachmentViewLinks || 'N/A'}.\nAttachment folder link: ${attachmentFolderLink || 'N/A'}.`\n    : 'No attachments.';\n\n  results.push({\n    json: {\n      ...item.json,\n      attachmentsTextForAI\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -128
+      ],
+      "id": "2471db25-338a-4f6a-8ff8-39ad8aad3966",
+      "name": "Prepare prompts payload"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  results.push({\n    json: {\n      ...item.json,\n      uploaded_attachment_names: '',\n      attachment_download_links: '',\n      attachment_view_links: '',\n      attachment_folder_link: ''\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -128
+      ],
+      "id": "9e018a54-b766-4ad9-adaf-eb84c29cdeaa",
+      "name": "Set Empty attachment fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const raw = item.json.output || '';\n\n  let e;\n  try {\n    e = JSON.parse(raw);\n  } catch (err) {\n    throw new Error('Invalid JSON from AI output: ' + raw);\n  }\n\n  const confidence = Number(e.confidence_score ?? 0);\n\n  const attachmentNames = Array.isArray(e.attachment_names)\n    ? e.attachment_names.join('; ')\n    : (e.attachment_names || item.json.uploaded_attachment_names || item.json.attachment_names || '');\n\n  const attachmentDownloadLinks = Array.isArray(e.attachment_download_links)\n    ? e.attachment_download_links.join('; ')\n    : (e.attachment_download_links || item.json.attachment_download_links || '');\n\n  const attachmentViewLinks = Array.isArray(e.attachment_view_links)\n    ? e.attachment_view_links.join('; ')\n    : (e.attachment_view_links || item.json.attachment_view_links || '');\n\n  const attachmentFolderLink =\n    e.attachment_folder_link || item.json.attachment_folder_link || '';\n\n  results.push({\n    json: {\n      customer_name: e.customer_name || '',\n      customer_email: e.customer_email || item.json.fromEmail || '',\n      company_name: e.company_name || '',\n      job_title: e.job_title || '',\n      subject: e.subject || item.json.subject || '',\n      product_type: e.product_type || '',\n      item_name: e.item_name || '',\n      quantity: e.quantity ?? '',\n      length: e.dimensions?.length ?? '',\n      width: e.dimensions?.width ?? '',\n      height: e.dimensions?.height ?? '',\n      unit: e.dimensions?.unit || 'mm',\n      use_case: e.use_case || '',\n      requirements: Array.isArray(e.requirements) ? e.requirements.join('; ') : '',\n      timeline: e.timeline || '',\n      attachments_present: e.attachments_present ?? item.json.attachments_present ?? false,\n      attachment_names: attachmentNames,\n      attachment_download_links: attachmentDownloadLinks,\n      attachment_view_links: attachmentViewLinks,\n      attachment_folder_link: attachmentFolderLink,\n      summary: e.summary || '',\n      missing_information: Array.isArray(e.missing_information) ? e.missing_information.join('; ') : '',\n      confidence_score: confidence,\n      status: confidence >= 0.75 ? 'New' : 'Review Required',\n      processed_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -64
+      ],
+      "id": "8008d76a-5f31-40aa-aa4d-04c933e80e69",
+      "name": "parse + flatten AI output"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1poyHH14JhR0iZXVg55HcU_El4ksoA6s1HlAdqy41D8s",
+          "mode": "list",
+          "cachedResultName": "nspcases-extraction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1poyHH14JhR0iZXVg55HcU_El4ksoA6s1HlAdqy41D8s/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 98072460,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1poyHH14JhR0iZXVg55HcU_El4ksoA6s1HlAdqy41D8s/edit#gid=98072460"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1808,
+        -64
+      ],
+      "id": "abf2e055-2fd1-4e04-85e1-1e15b211785b",
+      "name": "Import data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4FBhwBKQO1UcATvk",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "subject:enquiry"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        -80
+      ],
+      "id": "e7dd7ff4-2ad2-42c3-a6a2-fc306acc599b",
+      "name": "NSP Bot Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "F8xgJjWbLMHjSPcv",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "subject:enquiry"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        512
+      ],
+      "id": "1e2a6ecf-a8df-4976-9b68-e86cb561e64e",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "F8xgJjWbLMHjSPcv",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (const item of $input.all()) {\n  const j = item.json || {};\n  const b = item.binary || {};\n\n  const subject = j.subject || \"\";\n  const fromObj = j.from || {};\n  const firstFrom = Array.isArray(fromObj.value) && fromObj.value.length > 0 ? fromObj.value[0] : {};\n  const fromLine = firstFrom.address\n    ? (firstFrom.name ? `${firstFrom.name} <${firstFrom.address}>` : firstFrom.address)\n    : \"\";\n\n  const body = j.text || j.textPlain || j.snippet || \"\";\n\n  const email_text = [\n    subject ? `Subject: ${subject}` : \"\",\n    fromLine ? `From: ${fromLine}` : \"\",\n    \"\",\n    body,\n  ].filter(Boolean).join(\"\\n\");\n\n  const images = [];\n  for (const key of Object.keys(b)) {\n    const meta = b[key];\n    const mime = meta.mimeType || \"application/octet-stream\";\n    if (!mime.startsWith(\"image/\")) continue;\n\n    // This is the important part for filesystem-v2\n    const base64Data = await this.helpers.getBinaryDataBuffer(0, key);\n    images.push({\n      filename: meta.fileName || key,\n      mime_type: mime,\n      base64: base64Data.toString(\"base64\"),\n    });\n  }\n\n  out.push({ json: { email_text, images } });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        512
+      ],
+      "id": "f6de7bd3-923d-4966-9633-3199198e58aa",
+      "name": "Normalize1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sadly-plausible-trusting.ngrok-free.dev/extract",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email_text",
+              "value": "={{ $json.email_text }}"
+            },
+            {
+              "name": "images",
+              "value": "={{ $json.images }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        64,
+        512
+      ],
+      "id": "bb3011d7-0c2c-4f58-af35-e69882506e8f",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Clean Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Email": {
+      "main": [
+        [
+          {
+            "node": "Detect Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Attachments": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Set Empty attachment fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create folder": {
+      "main": [
+        [
+          {
+            "node": "prepare folder metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Preserve folder + email data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare folder metadata": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Collect Uploaded file Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Attachments": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Uploaded file Links": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preserve folder + email data": {
+      "main": [
+        [
+          {
+            "node": "Split Attachments",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Prepare prompts payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare prompts payload": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Empty attachment fields": {
+      "main": [
+        [
+          {
+            "node": "Prepare prompts payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "parse + flatten AI output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse + flatten AI output": {
+      "main": [
+        [
+          {
+            "node": "Import data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NSP Bot Email": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7880c716-6ba1-44c5-82b8-8310b10a0971",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dfbfc61f919951fed4fa98de845c8fa2ba5ab87f1b3e2403342abf5d76c2ec21"
+  },
+  "id": "9iWEHtftrcYwbRPM",
+  "tags": []
+}
